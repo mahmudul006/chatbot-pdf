@@ -49,7 +49,26 @@ def load_db(chain_type="stuff", k=4):
     # documents = loader.load()
     # print(documents)
     embeddings = OllamaEmbeddings(model="nomic-embed-text",show_progress=True)
-    text_splitter = SemanticChunker(embeddings)
+    # text_splitter = SemanticChunker(embeddings)
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=100,
+        chunk_overlap=20,
+        length_function=len,
+        is_separator_regex=False,
+        separators=[
+            "\n\n",
+            "\n",
+            " ",
+            ".",
+            ",",
+            "\u200b",  # Zero-width space
+            "\uff0c",  # Fullwidth comma
+            "\u3001",  # Ideographic comma
+            "\uff0e",  # Fullwidth full stop
+            "\u3002",  # Ideographic full stop
+            "",
+        ],
+    )
     docs = text_splitter.split_documents(documents)
     url = "https://82f0b180-dd10-41f1-80a2-1446cc29596b.us-east4-0.gcp.cloud.qdrant.io:6333"
     api_key="Enb2r7ZXSERf_9p6RUb6LjWvLTnsoqm34kYE2BHPE5GBNQ4XO1V_PA"
@@ -168,6 +187,7 @@ async def create_upload_file(files: list[UploadFile]):
     #     print(file.filename)
     print("cb.collection_name", cb.collection_name)
     client.delete_collection(cb.collection_name)
+    print("files", files)
     for file_upload in files:
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
             temp_file.write(await file_upload.read())
