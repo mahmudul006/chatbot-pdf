@@ -39,34 +39,10 @@ export function Chat() {
   const [input, setInput] = useState<string>('');
   const [messages, setMessages] = useState<
     { id: string; role: string; content: string }[]
-  >([
-    { id: '1', role: 'user', content: 'Hello' },
-    { id: '2', role: 'bot', content: 'Hi! How can I help you?' },
-    { id: '3', role: 'user', content: 'I need help' },
-    { id: '4', role: 'bot', content: 'Sure! What do you need help with?' },
-    { id: '5', role: 'user', content: 'I need help' },
-    { id: '6', role: 'bot', content: 'Sure! What do you need help with?' },
-    {
-      id: '7',
-      role: 'user',
-      content:
-        'I need help I need help I need help I need help I need help I need help I need help I need help I need help I need help',
-    },
-    { id: '8', role: 'bot', content: 'Sure! What do you need help with?' },
-    { id: '9', role: 'user', content: 'I need help' },
-    {
-      id: '10',
-      role: 'bot',
-      content:
-        'Sure! What do you need help with adawda?, sure Sure! What do you need help with adawda?, Sure! What do you need help with adawda?, Sure! What do you need help with adawda?, ',
-    },
-    { id: '11', role: 'user', content: 'I need no help' },
-    { id: '12', role: 'bot', content: 'Sure! What do you need help with?' },
-  ]);
+  >([]);
   // const { isSidebarOpen, isLoading, toggleSidebar } = useSidebar() || {};
   // console.log('is ', isSidebarOpen);
   const isMdUp = useMediaQuery('(min-width:900px)');
-
   const [open, setOpen] = React.useState(false);
 
   const toggleDrawer = () => {
@@ -75,6 +51,11 @@ export function Chat() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     // sendMessage(input)
+    setMessages((prev) => [
+      ...prev,
+      { id: `${prev.length + 1}`, role: 'user', content: input },
+    ]);
+    setInput('');
     console.log('submit', e.target);
     const res = await fetch('http://localhost:8000/api/chat', {
       method: 'POST',
@@ -83,7 +64,11 @@ export function Chat() {
       },
       body: JSON.stringify({ question: input }),
     });
-    console.log(res);
+    const response = await res.json();
+    setMessages((prev) => [
+      ...prev,
+      { id: `${prev.length + 1}`, role: 'bot', content: response },
+    ]);
   };
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
