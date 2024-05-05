@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { SidebarDesktop } from '@/components/sidebar-desktop';
+import { SidebarProvider } from '@/lib/hooks/use-sidebar';
+import { Grid } from '@mui/material';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -18,8 +20,16 @@ export default function RootLayout({
   return (
     <html lang='en'>
       <body className={inter.className}>
-        <SidebarDesktop />
+        {/* <SidebarProvider> */}
+        {/* <Grid container> */}
+        {/* <Grid item lg={2}>
+              <SidebarDesktop />
+            </Grid> */}
+        {/* <Grid item xs={12} lg={10}> */}
         {children}
+        {/* </Grid> */}
+        {/* </Grid> */}
+        {/* </SidebarProvider> */}
         {/* <main className='flex flex-col flex-1 bg-muted/50'>{children}</main> */}
       </body>
     </html>

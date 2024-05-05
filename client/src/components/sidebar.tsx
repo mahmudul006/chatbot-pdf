@@ -9,7 +9,7 @@ export interface SidebarProps extends React.ComponentProps<'div'> {}
 
 export function Sidebar({ className, children }: SidebarProps) {
   const { isSidebarOpen, isLoading, toggleSidebar } = useSidebar() || {};
-
+  console.log('is ', isSidebarOpen);
   return (
     <div
       data-state={isSidebarOpen && !isLoading ? 'open' : 'closed'}
