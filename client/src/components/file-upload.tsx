@@ -10,11 +10,12 @@ import {
 import DeleteIcon from '@mui/icons-material/Delete';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import CloseIcon from '@mui/icons-material/Close';
-import { Car } from 'lucide-react';
+
 
 export default function MultiplePdfUpload() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
@@ -33,8 +34,27 @@ export default function MultiplePdfUpload() {
     setSelectedFiles((prevFiles) => prevFiles.filter((_, i) => i !== index));
   };
 
-  const handleUpload = () => {
+  const handleUpload = async () => {
     console.log(selectedFiles);
+    const formData = new FormData();
+    selectedFiles.forEach((file) => {
+      formData.append('files', file);
+    });
+    const fileUpload = await fetch('http://localhost:8000/api/upload', {
+      method: 'POST',
+      body: formData,
+    });
+    if (fileUpload.ok) {
+      console.log('Files uploaded successfully');
+      // console.log(await fileUpload.json());
+      const res = await fileUpload.json();
+      console.log(res);
+      localStorage.setItem(
+        'collectionName',
+        JSON.stringify(res.collection_name)
+      );
+      // setSelectedFiles([]);
+    }
   };
 
   return (
