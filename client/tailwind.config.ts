@@ -10,6 +10,13 @@ const config = {
 	],
   prefix: "",
   theme: {
+    screens: {
+      'xs': '0px',
+      'sm': '600px',
+      'md': '900px',
+      'lg': '1200px',
+      'xl': '1536px',
+    },
     container: {
       center: true,
       padding: "2rem",
@@ -52,6 +59,7 @@ const config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        customGrey: '#212121'
       },
       borderRadius: {
         lg: "var(--radius)",
