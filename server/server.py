@@ -43,14 +43,13 @@ client = qdrant_client.QdrantClient(url=qdrant_url, api_key=qdrant_api_key)
  
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=['http://localhost:3000', 'http:localhost:8000'],  # Allows all origins
+    allow_origins=['http://localhost:3000', 'http:localhost:8000', 'http:localhost:8083'],  # Allows all origins
     allow_credentials=True,
     allow_methods=["*"],  # Allows all methods
     allow_headers=["*"],  # Allows all headers
 )
  
 documents = [Document(page_content='General Introduction    \nAug 2022   Page 28 \n8.3 Printing modules  \nIndividual modules or blocks can be printed out as follows.   \nOpen module => press right mouse button and select "Print".  \n \nNot only what is visible on the screen is printed, but an actual report is generated and printed.  \n \n  \n', metadata={'source': 'C:\\Users\\skb\\AppData\\Local\\Temp\\tmpuhvqpadt', 'page': 0})]
-
 class cbfs(param.Parameterized):
     chat_history = param.List([])
     answer = param.String("")
@@ -132,7 +131,6 @@ class cbfs(param.Parameterized):
         self.load_db("stuff", 4)
  
 cb = cbfs()
-
 @app.post("/api/chat", response_model=Answer)
 async def chat(query: Question):
     print('this is query:', query)
@@ -143,7 +141,6 @@ async def chat(query: Question):
 @app.post("/api/upload")
 async def create_upload_file(files: list[UploadFile]):
     client.delete_collection(cb.collection_name)
-
     for file_upload in files:
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
             temp_file.write(await file_upload.read())
