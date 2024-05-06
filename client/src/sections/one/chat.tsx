@@ -1,73 +1,36 @@
 'use client';
-
-// import FileUpload from '@/components/file-upload';
 import React, { useRef, useState, useEffect } from 'react';
-
 import InputBase from '@mui/material/InputBase';
-// import { Button } from '@/components/ui/button';
 import Container from '@mui/material/Container';
-import useMediaQuery from '@mui/material/useMediaQuery';
-// import { useSidebar } from '@/lib/hooks/use-sidebar';
-import { Box, alpha, Avatar, IconButton, Typography, InputAdornment } from '@mui/material';
-
+import {
+  Box,
+  alpha,
+  Avatar,
+  IconButton,
+  Typography,
+  InputAdornment,
+  CircularProgress,
+  LinearProgress,
+} from '@mui/material';
 import { useMockedUser } from 'src/hooks/use-mocked-user';
-
 import Iconify from 'src/components/iconify';
 import { useSettingsContext } from 'src/components/settings';
 
 export function Chat() {
   const { user } = useMockedUser();
   const settings = useSettingsContext();
-  // const { messages, input, handleInputChange, handleSubmit } = useChat({
-  //     api: 'http://localhost:5000/chat',
-  //     onError: (e) => {
-  //         console.log(e)
-  //     }
-  // })
   const [input, setInput] = useState<string>('');
-  const [messages, setMessages] = useState<{ id: string; role: string; content: string }[]>([
-    { id: '1', role: 'user', content: 'Hello' },
-    { id: '2', role: 'bot', content: 'Hi! How can I help you?' },
-    { id: '3', role: 'user', content: 'I need help' },
-    { id: '4', role: 'bot', content: 'Sure! What do you need help with?' },
-    { id: '5', role: 'user', content: 'I need help' },
-    { id: '6', role: 'bot', content: 'Sure! What do you need help with?' },
-    {
-      id: '7',
-      role: 'user',
-      content:
-        'I need help I need help I need help I need help I need help I need help I need help I need help I need help I need help',
-    },
-    { id: '8', role: 'bot', content: 'Sure! What do you need help with?' },
-    { id: '9', role: 'user', content: 'I need help' },
-    {
-      id: '10',
-      role: 'bot',
-      content:
-        'Sure! What do you need help with adawda?, sure Sure! What do you need help with adawda?, Sure! What do you need help with adawda?, Sure! What do you need help with adawda?, ',
-    },
-    { id: '11', role: 'user', content: 'I need no help' },
-    { id: '12', role: 'bot', content: 'Sure! What do you need help with?' },
-  ]);
-  // const { isSidebarOpen, isLoading, toggleSidebar } = useSidebar() || {};
-  // console.log('is ', isSidebarOpen);
-  const isMdUp = useMediaQuery('(min-width:900px)');
+  const [messages, setMessages] = useState<{ id: string; role: string; content: string }[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const chatParent = useRef<HTMLUListElement>(null);
 
-  const [open, setOpen] = React.useState(false);
-
-  const toggleDrawer = () => {
-    setOpen(!open);
-  };
   const handleSubmit = async (
     e: React.KeyboardEvent<HTMLInputElement> | React.MouseEvent<HTMLButtonElement>
   ) => {
     e.preventDefault();
-    // if (messagesContainerRef.current) {
-    //   messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
-    // }
+    setLoading(true);
     setMessages((prev) => [...prev, { id: String(prev.length + 1), role: 'user', content: input }]);
     setInput('');
-    console.log('submit', e.target);
     const res = await fetch('http://localhost:8000/api/chat', {
       method: 'POST',
       headers: {
@@ -76,13 +39,14 @@ export function Chat() {
       body: JSON.stringify({ question: input }),
     });
     const response = await res.json();
-    setMessages((prev) => [...prev, { id: `${prev.length + 1}`, role: 'bot', content: response }]);
+    if (res.ok) {
+      setMessages((prev) => [
+        ...prev,
+        { id: `${prev.length + 1}`, role: 'bot', content: response },
+      ]);
+    }
+    setLoading(false); // Set loading to false after receiving the response
   };
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(e.target.value);
-  };
-
-  const chatParent = useRef<HTMLUListElement>(null);
 
   useEffect(() => {
     const domNode = chatParent.current;
@@ -93,43 +57,82 @@ export function Chat() {
 
   return (
     <Container maxWidth={settings.themeStretch ? false : 'lg'}>
+      {messages.length === 0 && (
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            height: '70vh',
+            textAlign: 'center',
+          }}
+        >
+          <Avatar src="/assets/icons/bot.jpg" sx={{ width: 100, height: 100 }} />
+          <Typography variant="h3">How can I help you today?</Typography>
+        </Box>
+      )}
       <Box
         ref={chatParent}
         sx={{
           display: 'flex',
           flexDirection: 'column',
-          gap: 2,
           mb: 4,
         }}
       >
         {messages.map((m, index) => (
-          <Box key={m.id} sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              {m.role === 'user' ? (
-                <Avatar src={user?.photoURL} />
-              ) : (
-                <Avatar src="/assets/icons/bot.jpg">{/* <SmartToyOutlined /> */}</Avatar>
-              )}
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                {m.role === 'user' ? 'You' : 'ChatBot'}
-              </Typography>
-            </Box>
-            <Typography variant="body1" sx={{ ml: 6 }}>
-              {m.content}
-            </Typography>
+          <Box
+            key={m.id}
+            sx={{ display: 'flex', flexDirection: 'column', mb: m.role === 'bot' ? 2 : 0 }}
+          >
+            {m.role === 'user' && (
+              <>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Avatar src={user?.photoURL} />
+                  <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                    You
+                  </Typography>
+                </Box>
+                <Typography variant="body1" sx={{ ml: 6 }}>
+                  {m.content}
+                </Typography>
+              </>
+            )}
+            {/* Show bot icon and text only if the message role is user */}
+            {m.role === 'bot' && (
+              <>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Avatar src="/assets/icons/bot.jpg" />
+                  <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                    ChatBot
+                  </Typography>
+                </Box>
+                <Typography variant="body1" sx={{ ml: 6 }}>
+                  {m.content}
+                </Typography>
+              </>
+            )}
           </Box>
         ))}
+        {/* Display loader only when loading */}
+        {loading && (
+          <Box
+            sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mt: 2, ml: 4 }}
+          >
+            <CircularProgress size={20} color="primary" />
+            {/* <LinearProgress color="primary" /> */}
+          </Box>
+        )}
       </Box>
 
       <Box>
         <InputBase
           multiline
           fullWidth
-          // rows={1}
           maxRows={4}
           placeholder="Message ChatBot"
           value={input}
-          onChange={handleInputChange}
+          onChange={(e) => setInput(e.target.value)}
           sx={{
             p: 2,
             mb: 3,

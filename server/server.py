@@ -74,7 +74,7 @@ class cbfs(param.Parameterized):
         
         # text_splitter = SemanticChunker(embeddings)
         text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=100,
+            chunk_size=1000,
             chunk_overlap=20,
             length_function=len,
             is_separator_regex=False,
