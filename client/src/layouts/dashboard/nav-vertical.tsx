@@ -18,7 +18,7 @@ import MultiplePdfUpload from 'src/sections/one/file-upload';
 import { NAV } from '../config-layout';
 import { useNavData } from './config-navigation';
 import NavToggleButton from '../common/nav-toggle-button';
-
+import ModelSelection from 'src/sections/one/model-selection';
 // ----------------------------------------------------------------------
 
 type Props = {
@@ -65,6 +65,7 @@ export default function NavVertical({ openNav, onCloseNav }: Props) {
       <Box sx={{ flexGrow: 1 }} />
 
       {/* <NavUpgrade /> */}
+      <ModelSelection />
       <MultiplePdfUpload />
     </Scrollbar>
   );
