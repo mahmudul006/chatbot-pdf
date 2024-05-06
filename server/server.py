@@ -22,16 +22,22 @@ from pathlib import Path
 import tempfile
 from langchain.docstore.document import Document
 import uuid
+from langchain_groq import ChatGroq
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+qdrant_url = os.environ['QDRANT_URL']
+qdrant_api_key = os.environ['QDRANT_API_KEY']
 class Question(BaseModel):
     question: str
 class Answer(BaseModel):
     chat_history: List[Tuple[str, str]]
  
 app = FastAPI()
-client = qdrant_client.QdrantClient(url="https://82f0b180-dd10-41f1-80a2-1446cc29596b.us-east4-0.gcp.cloud.qdrant.io:6333", api_key="Enb2r7ZXSERf_9p6RUb6LjWvLTnsoqm34kYE2BHPE5GBNQ4XO1V_PA") 
- 
-## upload directory
-UPLOAD_DIR = Path() / 'files'
+client = qdrant_client.QdrantClient(url=qdrant_url, api_key=qdrant_api_key) 
+
  
 app.add_middleware(
     CORSMiddleware,
@@ -69,24 +75,23 @@ def load_db(chain_type="stuff", k=4):
             "",
         ],
     )
+
     docs = text_splitter.split_documents(documents)
-    url = "https://82f0b180-dd10-41f1-80a2-1446cc29596b.us-east4-0.gcp.cloud.qdrant.io:6333"
-    api_key="Enb2r7ZXSERf_9p6RUb6LjWvLTnsoqm34kYE2BHPE5GBNQ4XO1V_PA"
 
     collection_name = "my_documents_" + str(uuid.uuid4())
     db = Qdrant.from_documents(
         docs,
         embeddings,
-        url=url,
+        url=qdrant_url,
         prefer_grpc=True,
-        api_key=api_key,
+        api_key=qdrant_api_key,
         collection_name=collection_name,
     )
     # define retriever
     retriever = db.as_retriever(search_type="similarity", search_kwargs={"k": k})
     # create a chatbot chain. Memory is managed externally.
     qa = ConversationalRetrievalChain.from_llm(
-        llm=ChatOllama(model="llama3", temperature=0),
+        llm=ChatGroq(temperature=0, model_name="mixtral-8x7b-32768"),
         chain_type=chain_type,
         retriever=retriever,
         return_source_documents=True,
@@ -107,23 +112,8 @@ class cbfs(param.Parameterized):
         self.qa, self.collection_name = load_db("stuff", 4)
     def load_db_reinitialize(self):
         self.qa, self.collection_name = load_db("stuff", 4)
-    
-
-    # def call_load_db(self, count):
-    #     if count == 0 or file_input.value is None:  # init or no file specified :
-    #         return pn.pane.Markdown(f"Loaded File: {self.loaded_file}")
-    #     else:
-    #         file_input.save("temp.pdf")  # local copy
-    #         self.loaded_file = file_input.filename
-    #         button_load.button_style="outline"
-    #         self.qa = load_db("temp.pdf", "stuff", 4)
-    #         button_load.button_style="solid"
-    #     self.clr_history()
-    #     return pn.pane.Markdown(f"Loaded File: {self.loaded_file}")
  
     def convchain(self, query):
-        # if not query:
-        #     return pn.WidgetBox(pn.Row('User:', pn.pane.Markdown("", width=600)), scroll=True)
         result = self.qa({"question": query, "chat_history": self.chat_history})
         if self.chat_history is None:
             self.chat_history = []
@@ -133,47 +123,8 @@ class cbfs(param.Parameterized):
         self.answer = result['answer']
         return self.answer
  
-        # self.panels.extend([
-        #     pn.Row('User:', pn.pane.Markdown(query, width=600)),
-        #     pn.Row('ChatBot:', pn.pane.Markdown(self.answer, width=600, style={'background-color': '#F6F6F6'}))
-        # ])
-        # inp.value = ''  #clears loading indicator when cleared
-        # return pn.WidgetBox(*self.panels,scroll=True)
- 
-    # @param.depends('db_query ', )
-    # def get_lquest(self):
-    #     if not self.db_query :
-    #         return pn.Column(
-    #             pn.Row(pn.pane.Markdown(f"Last question to DB:", styles={'background-color': '#F6F6F6'})),
-    #             pn.Row(pn.pane.Str("no DB accesses so far"))
-    #         )
-    #     return pn.Column(
-    #         pn.Row(pn.pane.Markdown(f"DB query:", styles={'background-color': '#F6F6F6'})),
-    #         pn.pane.Str(self.db_query )
-    #     )
- 
-    # @param.depends('db_response', )
-    # def get_sources(self):
-    #     if not self.db_response:
-    #         return
-    #     rlist=[pn.Row(pn.pane.Markdown(f"Result of DB lookup:", styles={'background-color': '#F6F6F6'}))]
-    #     for doc in self.db_response:
-    #         rlist.append(pn.Row(pn.pane.Str(doc)))
-    #     return pn.WidgetBox(*rlist, width=600, scroll=True)
- 
-    # @param.depends('convchain', 'clr_history')
-    # def get_chats(self):
-    #     if not self.chat_history:
-    #         return pn.WidgetBox(pn.Row(pn.pane.Str("No History Yet")), width=600, scroll=True)
-    #     rlist=[pn.Row(pn.pane.Markdown(f"Current Chat History variable", styles={'background-color': '#F6F6F6'}))]
-    #     for exchange in self.chat_history:
-    #         rlist.append(pn.Row(pn.pane.Str(exchange)))
-    #     return pn.WidgetBox(*rlist, width=600, scroll=True)
- 
-    # def clr_history(self,count=0):
-    #     self.chat_history = []
-    #     return
 cb = cbfs()
+
 @app.post("/api/chat", response_model=Answer)
 async def chat(query: Question):
     print('this is query:', query)
@@ -183,21 +134,13 @@ async def chat(query: Question):
  
 @app.post("/api/upload")
 async def create_upload_file(files: list[UploadFile]):
-    # for file in files:
-    #     print(file.filename)
-    print("cb.collection_name", cb.collection_name)
     client.delete_collection(cb.collection_name)
-    print("files", files)
+
     for file_upload in files:
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
             temp_file.write(await file_upload.read())
             file_path = temp_file.name
             pdf_loader = PyPDFLoader(file_path)
             documents.extend(pdf_loader.load())
-            # print("PDF text ", documents)
     cb.load_db_reinitialize()
-    print("collection_name", cb.collection_name)
     return {"message": "Files uploaded successfully.", "collection_name": cb.collection_name}
- 
-def hello_world():
-    return "<p>Hello, World!</p>"
