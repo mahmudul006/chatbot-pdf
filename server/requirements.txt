@@ -5,3 +5,4 @@ langchain_experimental==0.0.57
 param==2.1.0
 pydantic==1.10.12
 qdrant_client==1.9.1
+pypdf==4.2.0
