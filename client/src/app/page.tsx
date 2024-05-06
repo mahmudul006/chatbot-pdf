@@ -1,9 +1,19 @@
-import { SidebarProvider } from '@/lib/hooks/use-sidebar';
-import { Chat } from './components/chat';
-import App from './components/app';
+'use client';
 
-export const runtime = 'edge';
+import { useEffect } from 'react';
 
-export default function Page() {
-  return <Chat />;
+import { useRouter } from 'src/routes/hooks';
+
+import { PATH_AFTER_LOGIN } from 'src/config-global';
+
+// ----------------------------------------------------------------------
+
+export default function HomePage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    router.push('/dashboard');
+  }, [router]);
+
+  return null;
 }
