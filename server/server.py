@@ -25,6 +25,7 @@ import uuid
 from langchain_groq import ChatGroq
 from dotenv import load_dotenv
 import os
+from langchain_community.document_loaders import UnstructuredHTMLLoader
 
 load_dotenv()
 
@@ -138,8 +139,18 @@ async def create_upload_file(files: list[UploadFile]):
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
             temp_file.write(await file_upload.read())
             file_path = temp_file.name
-            pdf_loader = PyPDFLoader(file_path)
-            documents.extend(pdf_loader.load())
+            _, file_extension = os.path.splitext(file_upload.filename)
+            if file_extension.lower() == '.pdf':
+                # Use PDF loader
+                pdf_loader = PyPDFLoader(file_path)
+                documents.extend(pdf_loader.load())
+            elif file_extension.lower() == '.html':
+                # Use HTML loader
+                html_loader = UnstructuredHTMLLoader(file_path)
+                documents.extend(html_loader.load())
+            else:
+                # Handle unsupported file types
+                return {"error": f"Unsupported file type: {file_extension}"}
     cb.load_db()
     return {"message": "Files uploaded successfully.", "collection_name": cb.collection_name}
 
