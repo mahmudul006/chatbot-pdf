@@ -73,10 +73,10 @@ class cbfs(param.Parameterized):
         embeddings = OllamaEmbeddings(model="nomic-embed-text",show_progress=True)
         
         # text_splitter = SemanticChunker(embeddings)
-        text_splitter = RecursiveCharacterTextSplitter(
+        text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
             chunk_size=1000,
             chunk_overlap=20,
-            length_function=len,
+            # length_function=tiktoken_encoder,
             is_separator_regex=False,
             separators=[
                 "\n\n",
