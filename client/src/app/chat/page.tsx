@@ -3,7 +3,7 @@ import { Chat } from 'src/sections/one/chat';
 // ----------------------------------------------------------------------
 
 export const metadata = {
-  title: 'Dashboard: One',
+  title: 'ChatBot',
 };
 
 export default function Page() {
