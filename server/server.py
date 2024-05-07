@@ -49,53 +49,54 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
  
-documents = [Document(page_content='General Introduction    \nAug 2022   Page 28 \n8.3 Printing modules  \nIndividual modules or blocks can be printed out as follows.   \nOpen module => press right mouse button and select "Print".  \n \nNot only what is visible on the screen is printed, but an actual report is generated and printed.  \n \n  \n', metadata={'source': 'C:\\Users\\skb\\AppData\\Local\\Temp\\tmpuhvqpadt', 'page': 0})]
+documents = [Document(page_content='dummy', metadata={'source': '/temp', 'page': 0})]
 class cbfs(param.Parameterized):
     chat_history = param.List([])
     answer = param.String("")
     db_query  = param.String("")
     db_response = param.List([])
-    collection_name = param.String("")
+    collection_name = param.String("my_documents_001")
     retriever = None
     qa = None
     model_name = "mixtral-8x7b-32768"
 
     def changeModel(self):
         self.qa = ConversationalRetrievalChain.from_llm(
-            llm=ChatGroq(temperature=0, model_name=self.model_name),
+            llm=ChatGroq(temperature=0, model_name=self.model_name,max_tokens=8192,),
             chain_type = "stuff",
             retriever= self.retriever,
             return_source_documents=True,
             return_generated_question=True,
         )
 
-    def load_db(self,chain_type="stuff", k=4):
+    def load_db(self,chain_type="stuff", k=15):
         embeddings = OllamaEmbeddings(model="nomic-embed-text",show_progress=True)
         
         # text_splitter = SemanticChunker(embeddings)
-        text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
+        text_splitter = CharacterTextSplitter.from_tiktoken_encoder(
             chunk_size=1000,
-            chunk_overlap=20,
-            # length_function=tiktoken_encoder,
+            chunk_overlap=0,
+            # length_function=len,
             is_separator_regex=False,
-            separators=[
-                "\n\n",
-                "\n",
-                " ",
-                ".",
-                ",",
-                "\u200b",  # Zero-width space
-                "\uff0c",  # Fullwidth comma
-                "\u3001",  # Ideographic comma
-                "\uff0e",  # Fullwidth full stop
-                "\u3002",  # Ideographic full stop
-                "",
-            ],
+            encoding_name="cl100k_base",
+            # separators=[
+            #     "\n\n",
+            #     "\n",
+            #     " ",
+            #     ".",
+            #     ",",
+            #     "\u200b",  # Zero-width space
+            #     "\uff0c",  # Fullwidth comma
+            #     "\u3001",  # Ideographic comma
+            #     "\uff0e",  # Fullwidth full stop
+            #     "\u3002",  # Ideographic full stop
+            #     "",
+            # ],
         )
 
         docs = text_splitter.split_documents(documents)
 
-        self.collection_name = "my_documents_" + str(uuid.uuid4())
+        # self.collection_name = "my_documents_" + str(uuid.uuid4())
         db = Qdrant.from_documents(
             docs,
             embeddings,
@@ -106,14 +107,6 @@ class cbfs(param.Parameterized):
         )
         # define retriever
         self.retriever = db.as_retriever(search_type="similarity", search_kwargs={"k": k})
-        # create a chatbot chain. Memory is managed externally.
-        # qa = ConversationalRetrievalChain.from_llm(
-        #     llm=ChatGroq(temperature=0, model_name="mixtral-8x7b-32768"),
-        #     chain_type=chain_type,
-        #     retriever=retriever,
-        #     return_source_documents=True,
-        #     return_generated_question=True,
-        # )
         self.changeModel()
  
     def convchain(self, query):
@@ -140,7 +133,7 @@ async def chat(query: Question):
  
 @app.post("/api/upload")
 async def create_upload_file(files: list[UploadFile]):
-    client.delete_collection(cb.collection_name)
+    # client.delete_collection(cb.collection_name)
     for file_upload in files:
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
             temp_file.write(await file_upload.read())
