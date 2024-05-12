@@ -352,7 +352,7 @@ export function Chat() {
           multiline
           fullWidth
           maxRows={4}
-          placeholder="Message ChatBot hrs"
+          placeholder="Message ChatBot"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           sx={{
