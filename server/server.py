@@ -1,5 +1,5 @@
 from fastapi import FastAPI, UploadFile, File, WebSocket
-#from langchain_community.embeddings import OllamaEmbeddings
+from langchain_community.embeddings import OllamaEmbeddings
 from langchain.text_splitter import CharacterTextSplitter, RecursiveCharacterTextSplitter
 from langchain.vectorstores import DocArrayInMemorySearch
 from langchain.document_loaders import TextLoader
@@ -72,7 +72,7 @@ class cbfs(param.Parameterized):
         )
 
     def load_db(self,chain_type="stuff", k=15):
-        #embeddings = OllamaEmbeddings(model="nomic-embed-text",show_progress=True)
+        embeddings = OllamaEmbeddings(model="nomic-embed-text",show_progress=True)
         
         # text_splitter = SemanticChunker(embeddings)
         text_splitter = CharacterTextSplitter.from_tiktoken_encoder(
@@ -99,17 +99,17 @@ class cbfs(param.Parameterized):
         docs = text_splitter.split_documents(documents)
 
         # self.collection_name = "my_documents_" + str(uuid.uuid4())
-        # db = Qdrant.from_documents(
-        #     docs,
-        #     embeddings,
-        #     url=qdrant_url,
-        #     prefer_grpc=True,
-        #     api_key=qdrant_api_key,
-        #     collection_name=self.collection_name,
-        # )
-        # # define retriever
-        # self.retriever = db.as_retriever(search_type="similarity", search_kwargs={"k": k})
-        # self.changeModel()
+        db = Qdrant.from_documents(
+            docs,
+            embeddings,
+            url=qdrant_url,
+            prefer_grpc=True,
+            api_key=qdrant_api_key,
+            collection_name=self.collection_name,
+        )
+        # define retriever
+        self.retriever = db.as_retriever(search_type="similarity", search_kwargs={"k": k})
+        self.changeModel()
  
     def convchain(self, query):
         result = self.qa({"question": query, "chat_history": self.chat_history})
@@ -128,10 +128,10 @@ class cbfs(param.Parameterized):
 cb = cbfs()
 @app.post("/api/chat", response_model=Answer)
 async def chat(query: Question):
-    # print('this is query:', query)
-    # res = cb.convchain(query.question)
-    # print('this is res:', res)
-    return JSONResponse("hrs")
+    print('this is query:', query)
+    res = cb.convchain(query.question)
+    print('this is res:', res)
+    return JSONResponse(res)
  
 @app.post("/api/upload")
 async def create_upload_file(files: list[UploadFile]):
