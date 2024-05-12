@@ -68,7 +68,7 @@ export function Chat() {
             textAlign: 'center',
           }}
         >
-          <Avatar src="/assets/icons/bot.jpg" sx={{ width: 100, height: 100 }} />
+          <Avatar src="/assets/icons/walle.jpg" sx={{ width: 100, height: 100 }} />
           <Typography variant="h3">How can I help you today?</Typography>
         </Box>
       )}
@@ -88,7 +88,7 @@ export function Chat() {
             {m.role === 'user' && (
               <>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Avatar src={user?.photoURL} />
+                  <Avatar src="/assets/icons/panda.png" />
                   <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
                     You
                   </Typography>
@@ -102,7 +102,7 @@ export function Chat() {
             {m.role === 'bot' && (
               <>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Avatar src="/assets/icons/bot.jpg" />
+                  <Avatar src="/assets/icons/walle.jpg" />
                   <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
                     ChatBot
                   </Typography>

@@ -80,7 +80,8 @@ class cbfs(param.Parameterized):
             # length_function=len,
             is_separator_regex=False,
             encoding_name="cl100k_base",
-            # separators=[
+            
+            # separator=[
             #     "\n\n",
             #     "\n",
             #     " ",
