@@ -218,7 +218,7 @@ export function Chat() {
           recorder.ondataavailable = (ev) => {
             chunks.current.push(ev.data);// Handle data available during recording
             console.log(chunks);
-            if (!audioLoadRef?.current) {
+            if (!audioLoadRef?.current && micOnRef?.current) {
               const audioBlob = new Blob(chunks.current, { type: "audio/wav" });
               console.log("AudioBlob -> text");
               blobToBase64(audioBlob).then(base64 => {
