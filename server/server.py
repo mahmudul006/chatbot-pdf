@@ -1,5 +1,5 @@
-from fastapi import FastAPI, UploadFile, File
-from langchain_community.embeddings import OllamaEmbeddings
+from fastapi import FastAPI, UploadFile, File, WebSocket
+#from langchain_community.embeddings import OllamaEmbeddings
 from langchain.text_splitter import CharacterTextSplitter, RecursiveCharacterTextSplitter
 from langchain.vectorstores import DocArrayInMemorySearch
 from langchain.document_loaders import TextLoader
@@ -36,6 +36,8 @@ class Answer(BaseModel):
     chat_history: List[Tuple[str, str]]
 class ModelName(BaseModel):
     model_name: str
+class AudioBlob(BaseModel):
+    blob: str
  
 app = FastAPI()
 client = qdrant_client.QdrantClient(url=qdrant_url, api_key=qdrant_api_key) 
@@ -43,7 +45,7 @@ client = qdrant_client.QdrantClient(url=qdrant_url, api_key=qdrant_api_key)
  
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=['http://localhost:3000', 'http:localhost:8000', 'http:localhost:8083'],  # Allows all origins
+    allow_origins=['http://localhost:3000', 'http:localhost:8000', 'http:localhost:8083', 'http:localhost:55346'],  # Allows all origins
     allow_credentials=True,
     allow_methods=["*"],  # Allows all methods
     allow_headers=["*"],  # Allows all headers
@@ -70,7 +72,7 @@ class cbfs(param.Parameterized):
         )
 
     def load_db(self,chain_type="stuff", k=15):
-        embeddings = OllamaEmbeddings(model="nomic-embed-text",show_progress=True)
+        #embeddings = OllamaEmbeddings(model="nomic-embed-text",show_progress=True)
         
         # text_splitter = SemanticChunker(embeddings)
         text_splitter = CharacterTextSplitter.from_tiktoken_encoder(
@@ -97,17 +99,17 @@ class cbfs(param.Parameterized):
         docs = text_splitter.split_documents(documents)
 
         # self.collection_name = "my_documents_" + str(uuid.uuid4())
-        db = Qdrant.from_documents(
-            docs,
-            embeddings,
-            url=qdrant_url,
-            prefer_grpc=True,
-            api_key=qdrant_api_key,
-            collection_name=self.collection_name,
-        )
-        # define retriever
-        self.retriever = db.as_retriever(search_type="similarity", search_kwargs={"k": k})
-        self.changeModel()
+        # db = Qdrant.from_documents(
+        #     docs,
+        #     embeddings,
+        #     url=qdrant_url,
+        #     prefer_grpc=True,
+        #     api_key=qdrant_api_key,
+        #     collection_name=self.collection_name,
+        # )
+        # # define retriever
+        # self.retriever = db.as_retriever(search_type="similarity", search_kwargs={"k": k})
+        # self.changeModel()
  
     def convchain(self, query):
         result = self.qa({"question": query, "chat_history": self.chat_history})
@@ -126,10 +128,10 @@ class cbfs(param.Parameterized):
 cb = cbfs()
 @app.post("/api/chat", response_model=Answer)
 async def chat(query: Question):
-    print('this is query:', query)
-    res = cb.convchain(query.question)
-    print('this is res:', res)
-    return JSONResponse(res)
+    # print('this is query:', query)
+    # res = cb.convchain(query.question)
+    # print('this is res:', res)
+    return JSONResponse("hrs")
  
 @app.post("/api/upload")
 async def create_upload_file(files: list[UploadFile]):
@@ -148,3 +150,57 @@ async def changellmModel(model: ModelName):
     cb.model_name = model.model_name
     cb.changeModel()
     return {"message": "Model updated successfully."}
+
+@app.post("/api/speechtotext")
+async def speech_to_text(audioblob: AudioBlob):
+    import base64
+    encode_string = audioblob.blob
+    print("-- speech to text --")
+    wav_file = open("audio.wav", "wb")
+    decode_string = base64.b64decode(encode_string)
+    wav_file.write(decode_string)
+    text = faster_whisper()
+    return JSONResponse(text)
+
+@app.websocket("/speechtotext")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    import base64
+    print("--socket--")
+    file_path = "audio.wav"
+    with open(file_path, "wb") as wav_file:
+        while True:
+            encode_string = await websocket.receive_text()
+            print("-- speech to text --")
+            decode_string = base64.b64decode(encode_string)
+            wav_file.write(decode_string)
+            text = faster_whisper()
+            print(text)
+            return await websocket.send_text(text)
+
+def whisper():
+    import whisper
+    model = whisper.load_model("small")
+    result = model.transcribe("audio.wav", language='en')
+    return result["text"]
+
+def faster_whisper():
+    os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
+    from faster_whisper import WhisperModel
+    model_size = "small"
+    # Run on GPU with FP16
+    # model = WhisperModel(model_size, device="cuda", compute_type="float16")
+    # or run on GPU with INT8
+    model = WhisperModel(model_size, device="cuda", compute_type="int8_float16")
+    # or run on CPU with INT8
+    # model = WhisperModel(model_size, device="cpu", compute_type="int8")
+    segments, info = model.transcribe("audio.wav", beam_size=5, language='en')
+
+
+    print("Detected language '%s' with probability %f" % (info.language, info.language_probability))
+    chunks = ""
+    for segment in segments:
+        chunks += segment.text
+        print("[%.2fs -> %.2fs] %s" % (segment.start, segment.end, segment.text))
+    return chunks
+    
