@@ -167,36 +167,40 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     import base64
     print("--socket--")
-    file_path = "audio.wav"
-    with open(file_path, "wb") as wav_file:
-        while True:
-            encode_string = await websocket.receive_text()
-            print("-- speech to text --")
-            
-            decode_string = base64.b64decode(encode_string)
-            
-            wav_file.write(decode_string)
-            text = faster_whisper()
-            print(text)
-            return await websocket.send_text(text)
+    file_path = str(uuid.uuid4()) + '.wav'
+    try:
+        encode_string = await websocket.receive_text()
+        if encode_string:
+            with open(file_path, "wb") as wav_file:
+                print("-- start speech to text --")
+                decode_string = base64.b64decode(encode_string)
+                wav_file.write(decode_string)
+                text = faster_whisper(file_path)
+                print(text)
+    finally:
+        wav_file.close()
+     
+    os.remove(file_path)
+    print("-- end speech to text --")
+    return await websocket.send_text(text)
 
-def whisper():
+def whisper(file_path):
     import whisper
-    model = whisper.load_model("small")
-    result = model.transcribe("audio.wav")
+    model = whisper.load_model("medium")
+    result = model.transcribe(file_path)
     return result["text"]
 
-def faster_whisper():
+def faster_whisper(file_path):
     os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
     from faster_whisper import WhisperModel
-    model_size = "small"
+    model_size = "medium"
     # Run on GPU with FP16
-    # model = WhisperModel(model_size, device="cuda", compute_type="float16")
+    model = WhisperModel(model_size, device="cuda", compute_type="float16")
     # or run on GPU with INT8
-    model = WhisperModel(model_size, device="cuda", compute_type="int8_float16")
+    # model = WhisperModel(model_size, device="cuda", compute_type="int8_float16")
     # or run on CPU with INT8
     # model = WhisperModel(model_size, device="cpu", compute_type="int8")
-    segments, info = model.transcribe("audio.wav", beam_size=5)
+    segments, info = model.transcribe(file_path, beam_size=5)
 
 
     print("Detected language '%s' with probability %f" % (info.language, info.language_probability))
