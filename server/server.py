@@ -178,8 +178,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 text = faster_whisper(file_path)
                 print(text)
     finally:
-        if wav_file:
-            wav_file.close()     
+        wav_file.close()
+     
     os.remove(file_path)
     print("-- end speech to text --")
     return await websocket.send_text(text)
