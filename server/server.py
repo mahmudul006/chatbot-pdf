@@ -172,7 +172,9 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             encode_string = await websocket.receive_text()
             print("-- speech to text --")
+            
             decode_string = base64.b64decode(encode_string)
+            
             wav_file.write(decode_string)
             text = faster_whisper()
             print(text)
@@ -181,7 +183,7 @@ async def websocket_endpoint(websocket: WebSocket):
 def whisper():
     import whisper
     model = whisper.load_model("small")
-    result = model.transcribe("audio.wav", language='en')
+    result = model.transcribe("audio.wav")
     return result["text"]
 
 def faster_whisper():
@@ -194,7 +196,7 @@ def faster_whisper():
     model = WhisperModel(model_size, device="cuda", compute_type="int8_float16")
     # or run on CPU with INT8
     # model = WhisperModel(model_size, device="cpu", compute_type="int8")
-    segments, info = model.transcribe("audio.wav", beam_size=5, language='en')
+    segments, info = model.transcribe("audio.wav", beam_size=5)
 
 
     print("Detected language '%s' with probability %f" % (info.language, info.language_probability))
