@@ -167,22 +167,23 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     import base64
     print("--socket--")
-    file_path = str(uuid.uuid4()) + '.wav'
-    try:
-        encode_string = await websocket.receive_text()
-        if encode_string:
-            with open(file_path, "wb") as wav_file:
-                print("-- start speech to text --")
-                decode_string = base64.b64decode(encode_string)
-                wav_file.write(decode_string)
-                text = faster_whisper(file_path)
-                print(text)
-    finally:
-        wav_file.close()
-     
-    os.remove(file_path)
-    print("-- end speech to text --")
-    return await websocket.send_text(text)
+    while True:
+        try:
+            encode_string = await websocket.receive_text()
+            file_path = str(uuid.uuid4()) + '.wav'
+            if encode_string:
+                with open(file_path, "wb") as wav_file:
+                    print("-- start speech to text --")
+                    decode_string = base64.b64decode(encode_string)
+                    wav_file.write(decode_string)
+                    text = faster_whisper(file_path)
+                    print(text)
+        finally:
+            wav_file.close()
+        
+        os.remove(file_path)
+        print("-- end speech to text --")
+        await websocket.send_text(text)
 
 def whisper(file_path):
     import whisper
