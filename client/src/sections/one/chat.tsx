@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useCallback, use } from 'react';
 import InputBase from '@mui/material/InputBase';
 import Container from '@mui/material/Container';
 import {
@@ -18,8 +18,13 @@ import Iconify from 'src/components/iconify';
 import { useSettingsContext } from 'src/components/settings';
 import { promises } from 'dns';
 
+// const dev_url = 'http://40.79.255.161:8000/';
+// const ws_url = '40.79.255.161:8000/';
+
 export function Chat() {
-  const speechToTextSocket = useRef(new WebSocket('ws://localhost:8000/speechtotext'));
+  const speechToTextSocket = useRef(
+    new WebSocket(`ws://${process.env.NEXT_PUBLIC_WS_DEV_URL}/speechtotext`)
+  );
 
   const { user } = useMockedUser();
   const settings = useSettingsContext();
@@ -27,7 +32,6 @@ export function Chat() {
   const [messages, setMessages] = useState<{ id: string; role: string; content: string }[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const chatParent = useRef<HTMLUListElement>(null);
-
 
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const mrRef = useRef(mediaRecorder);
@@ -45,7 +49,7 @@ export function Chat() {
     setLoading(true);
     setMessages((prev) => [...prev, { id: String(prev.length + 1), role: 'user', content: input }]);
     setInput('');
-    const res = await fetch('http://localhost:8000/api/chat', {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_DEV_URL}/api/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -70,8 +74,7 @@ export function Chat() {
         mediaRecorder.stop();
       }
     } else if (mediaRecorder) {
-      setWebSocketEvent();
-
+      // setWebSocketEvent();
 
       currentMessageIdRef.current = String(messages.length + 1);
       mediaRecorder.start();
@@ -83,83 +86,84 @@ export function Chat() {
         if (!micOnRef?.current) {
           clearInterval(id1);
         }
-      }, 2000)
+      }, 2000);
     }
     micOnRef.current = !micOn;
     setMicOn(!micOn);
   };
 
   const setWebSocketEvent = () => {
-    speechToTextSocket.current = new WebSocket('ws://localhost:8000/speechtotext');
+    speechToTextSocket.current = new WebSocket(
+      `ws://${process.env.NEXT_PUBLIC_WS_DEV_URL}/speechtotext`
+    );
 
     speechToTextSocket.current.onmessage = (event) => {
       const data = event.data;
       console.log('Received data:');
       audioLoadRef.current = false;
       setAudioLoading(false);
-      setMessages((prev) => prev.find(m => m.id === currentMessageIdRef.current) ?
-        prev.map(msg => msg.id === currentMessageIdRef.current ? {...msg, content: data} : msg) :
-        [
-          ...prev,
-          { id: currentMessageIdRef.current, role: 'user', content: data },
-        ]
+      setMessages((prev) =>
+        prev.find((m) => m.id === currentMessageIdRef.current)
+          ? prev.map((msg) =>
+              msg.id === currentMessageIdRef.current ? { ...msg, content: data } : msg
+            )
+          : [...prev, { id: currentMessageIdRef.current, role: 'user', content: data }]
       );
     };
-  }
+  };
 
   const getText = (audioBlob: Blob) => {
     audioLoadRef.current = true;
     setAudioLoading(true);
     const reader = new FileReader();
     reader.onload = function () {
-      const base64data = reader?.result?.split(",")[1];
-      fetch('http://localhost:8000/api/speechtotext', {
+      const base64data = reader?.result?.split(',')[1];
+      fetch(`${process.env.NEXT_PUBLIC_DEV_URL}/api/speechtotext`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ blob: base64data }),
-      }).then(
-        res => {
-          audioLoadRef.current = false;
-          setAudioLoading(false);
-          console.log(res);
-          if (res && res.ok) {
-            const response = res.json();
-            response.then(jsonResult => {
-              setMessages((prev) => prev.find(m => m.id === currentMessageIdRef.current) ?
-                prev.map(msg => msg.id === currentMessageIdRef.current ? {...msg, content: jsonResult} : msg) :
-                [
-                  ...prev,
-                  { id: currentMessageIdRef.current, role: 'user', content: jsonResult },
-                ]
-              );
-            });
-          }
+      }).then((res) => {
+        audioLoadRef.current = false;
+        setAudioLoading(false);
+        console.log(res);
+        if (res && res.ok) {
+          const response = res.json();
+          response.then((jsonResult) => {
+            setMessages((prev) =>
+              prev.find((m) => m.id === currentMessageIdRef.current)
+                ? prev.map((msg) =>
+                    msg.id === currentMessageIdRef.current ? { ...msg, content: jsonResult } : msg
+                  )
+                : [...prev, { id: currentMessageIdRef.current, role: 'user', content: jsonResult }]
+            );
+          });
         }
-      );
+      });
     };
     reader.readAsDataURL(audioBlob);
-
   };
 
-  const blobToBase64 = (audioBlob: Blob): Promise<string> => new Promise((resolve) => {
-    audioLoadRef.current = true;
-    setAudioLoading(true);
-    const reader = new FileReader();
-    reader.onload = function () {
-      const base64data = reader?.result?.split(",")[1];
-      resolve(base64data);
-    };
-    reader.readAsDataURL(audioBlob);
-  });
+  const blobToBase64 = (audioBlob: Blob): Promise<string> =>
+    new Promise((resolve) => {
+      audioLoadRef.current = true;
+      setAudioLoading(true);
+      const reader = new FileReader();
+      reader.onload = function () {
+        const base64data = reader?.result?.split(',')[1];
+        resolve(base64data);
+      };
+      reader.readAsDataURL(audioBlob);
+    });
 
   // Ref to store audio chunks during recording
   const chunks = useRef([]);
 
   const initMediaRecorder = useCallback(() => {
     if (navigator && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      navigator.mediaDevices.getUserMedia({ audio: true })
+      navigator.mediaDevices
+        .getUserMedia({ audio: true })
         .then((stream) => {
           const recorder = new MediaRecorder(stream);
           setMediaRecorder(recorder);
@@ -167,33 +171,32 @@ export function Chat() {
             chunks.current = []; // Resetting chunks array
           };
           recorder.ondataavailable = (ev) => {
-            chunks.current.push(ev.data);// Handle data available during recording
+            chunks.current.push(ev.data); // Handle data available during recording
             console.log(chunks);
             if (!audioLoadRef?.current) {
-              const audioBlob = new Blob(chunks.current, { type: "audio/wav" });
-              console.log("AudioBlob -> text");
+              const audioBlob = new Blob(chunks.current, { type: 'audio/wav' });
+              console.log('AudioBlob -> text');
               getText(audioBlob);
             }
           };
           recorder.onstop = () => {
             // Handle recording stopped
-              if (!audioLoadRef?.current) {
-                const audioBlob = new Blob(chunks.current, { type: "audio/wav" });
-                console.log("AudioBlob -> stop");
-                getText(audioBlob);
-                chunks.current = [];
-              }
-              else {
-                const id2 = setInterval(() => {
-                  if (!audioLoadRef?.current && chunks.current.length > 0) {
-                    const audioBlob = new Blob(chunks.current, { type: "audio/wav" });
-                    console.log("AudioBlob stop");
-                    getText(audioBlob);
-                    chunks.current = [];
-                    clearInterval(id2);
-                  }
-                }, 2000)
-              }
+            if (!audioLoadRef?.current) {
+              const audioBlob = new Blob(chunks.current, { type: 'audio/wav' });
+              console.log('AudioBlob -> stop');
+              getText(audioBlob);
+              chunks.current = [];
+            } else {
+              const id2 = setInterval(() => {
+                if (!audioLoadRef?.current && chunks.current.length > 0) {
+                  const audioBlob = new Blob(chunks.current, { type: 'audio/wav' });
+                  console.log('AudioBlob stop');
+                  getText(audioBlob);
+                  chunks.current = [];
+                  clearInterval(id2);
+                }
+              }, 2000);
+            }
           };
         })
         .catch((error) => {
@@ -207,7 +210,8 @@ export function Chat() {
   const initMediaRecorderWithSocket = useCallback(() => {
     if (navigator && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
       // if (micOn) {
-        navigator.mediaDevices.getUserMedia({ audio: true })
+      navigator.mediaDevices
+        .getUserMedia({ audio: true })
         .then((stream) => {
           const recorder = new MediaRecorder(stream);
           setMediaRecorder(recorder);
@@ -216,48 +220,47 @@ export function Chat() {
             chunks.current = []; // Resetting chunks array
           };
           recorder.ondataavailable = (ev) => {
-            chunks.current.push(ev.data);// Handle data available during recording
+            chunks.current.push(ev.data); // Handle data available during recording
             console.log(chunks);
             if (!audioLoadRef?.current && micOnRef?.current) {
-              const audioBlob = new Blob(chunks.current, { type: "audio/wav" });
-              console.log("AudioBlob -> text");
-              blobToBase64(audioBlob).then(base64 => {
-                setWebSocketEvent();
-                speechToTextSocket.current.onopen = () => {
-                  speechToTextSocket.current.send(base64);
-                };
+              const audioBlob = new Blob(chunks.current, { type: 'audio/wav' });
+              console.log('AudioBlob -> text');
+              blobToBase64(audioBlob).then((base64) => {
+                // setWebSocketEvent();
+                // speechToTextSocket.current.onopen = () => {
+                speechToTextSocket.current.send(base64);
+                // };
               });
             }
           };
           recorder.onstop = () => {
             // Handle recording stopped
-              if (!audioLoadRef?.current) {
-                const audioBlob = new Blob(chunks.current, { type: "audio/wav" });
-                console.log("AudioBlob -> stop");
-                blobToBase64(audioBlob).then(base64 => {
-                  setWebSocketEvent();
-                  speechToTextSocket.current.onopen = () => {
+            if (!audioLoadRef?.current) {
+              const audioBlob = new Blob(chunks.current, { type: 'audio/wav' });
+              console.log('AudioBlob -> stop');
+              blobToBase64(audioBlob).then((base64) => {
+                // setWebSocketEvent();
+                // speechToTextSocket.current.onopen = () => {
+                speechToTextSocket.current.send(base64);
+                // };
+              });
+              chunks.current = [];
+            } else {
+              const id2 = setInterval(() => {
+                if (!audioLoadRef?.current && chunks.current.length > 0) {
+                  const audioBlob = new Blob(chunks.current, { type: 'audio/wav' });
+                  console.log('AudioBlob stop');
+                  blobToBase64(audioBlob).then((base64) => {
+                    // setWebSocketEvent();
+                    // speechToTextSocket.current.onopen = () => {
                     speechToTextSocket.current.send(base64);
-                  };
-                });
-                chunks.current = [];
-              }
-              else {
-                const id2 = setInterval(() => {
-                  if (!audioLoadRef?.current && chunks.current.length > 0) {
-                    const audioBlob = new Blob(chunks.current, { type: "audio/wav" });
-                    console.log("AudioBlob stop");
-                    blobToBase64(audioBlob).then(base64 => {
-                      setWebSocketEvent();
-                      speechToTextSocket.current.onopen = () => {
-                        speechToTextSocket.current.send(base64);
-                      };
-                    });
-                    chunks.current = [];
-                    clearInterval(id2);
-                  }
-                }, 2000)
-              }
+                    // };
+                  });
+                  chunks.current = [];
+                  clearInterval(id2);
+                }
+              }, 2000);
+            }
           };
         })
         .catch((error) => {
@@ -277,6 +280,25 @@ export function Chat() {
     initMediaRecorderWithSocket();
   }, [messages, initMediaRecorderWithSocket]);
 
+  // useEffect(() => {
+  //   initMediaRecorderWithSocket();
+  // }, [initMediaRecorderWithSocket]);
+
+  useEffect(() => {
+    speechToTextSocket.current.onmessage = (event) => {
+      const data = event.data;
+      console.log('Received data:');
+      audioLoadRef.current = false;
+      setAudioLoading(false);
+      setMessages((prev) =>
+        prev.find((m) => m.id === currentMessageIdRef.current)
+          ? prev.map((msg) =>
+              msg.id === currentMessageIdRef.current ? { ...msg, content: data } : msg
+            )
+          : [...prev, { id: currentMessageIdRef.current, role: 'user', content: data }]
+      );
+    };
+  }, []);
   return (
     <Container maxWidth={settings.themeStretch ? false : 'lg'}>
       {messages.length === 0 && (
@@ -378,7 +400,7 @@ export function Chat() {
                 <Iconify icon="iconamoon:send-fill" />
               </IconButton>
               <IconButton size="small" onClick={handleMic} disabled={!micOn && audioLoading}>
-                <Iconify icon="material-symbols:mic-outline" color={micOn ? 'red' : 'blue'}/>
+                <Iconify icon="material-symbols:mic-outline" color={micOn ? 'red' : 'blue'} />
               </IconButton>
             </InputAdornment>
           }
