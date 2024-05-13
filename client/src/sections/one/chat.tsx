@@ -18,14 +18,12 @@ import Iconify from 'src/components/iconify';
 import { useSettingsContext } from 'src/components/settings';
 import { promises } from 'dns';
 
-// const dev_url = 'http://40.79.255.161:8000/';
-// const ws_url = '40.79.255.161:8000/';
 
 export function Chat() {
-  const speechToTextSocket = useRef(
-    new WebSocket(`ws://${process.env.NEXT_PUBLIC_WS_DEV_URL}/speechtotext`)
-  );
-
+  // const speechToTextSocket = useRef(
+  //   new WebSocket(`ws://${process.env.NEXT_PUBLIC_WS_DEV_URL}/speechtotext`)
+  // );
+  const speechToTextSocket = useRef<WebSocket | null>(null);
   const { user } = useMockedUser();
   const settings = useSettingsContext();
   const [input, setInput] = useState<string>('');
@@ -277,27 +275,29 @@ export function Chat() {
     if (domNode) {
       window.scrollBy(0, screen.height);
     }
-    initMediaRecorderWithSocket();
-  }, [messages, initMediaRecorderWithSocket]);
-
-  // useEffect(() => {
-  //   initMediaRecorderWithSocket();
-  // }, [initMediaRecorderWithSocket]);
+  }, [messages]);
 
   useEffect(() => {
-    speechToTextSocket.current.onmessage = (event) => {
-      const data = event.data;
-      console.log('Received data:');
-      audioLoadRef.current = false;
-      setAudioLoading(false);
-      setMessages((prev) =>
-        prev.find((m) => m.id === currentMessageIdRef.current)
-          ? prev.map((msg) =>
-              msg.id === currentMessageIdRef.current ? { ...msg, content: data } : msg
-            )
-          : [...prev, { id: currentMessageIdRef.current, role: 'user', content: data }]
+    if (!speechToTextSocket.current) {
+      speechToTextSocket.current = new WebSocket(
+        `ws://${process.env.NEXT_PUBLIC_WS_DEV_URL}/speechtotext`
       );
-    };
+
+      speechToTextSocket.current.onmessage = (event) => {
+        const data = event.data;
+        console.log('Received data:');
+        audioLoadRef.current = false;
+        setAudioLoading(false);
+        setMessages((prev) =>
+          prev.find((m) => m.id === currentMessageIdRef.current)
+            ? prev.map((msg) =>
+                msg.id === currentMessageIdRef.current ? { ...msg, content: data } : msg
+              )
+            : [...prev, { id: currentMessageIdRef.current, role: 'user', content: data }]
+        );
+      };
+      initMediaRecorderWithSocket();
+    }
   }, []);
   return (
     <Container maxWidth={settings.themeStretch ? false : 'lg'}>
